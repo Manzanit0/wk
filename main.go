@@ -39,7 +39,7 @@ func main() {
 		Long:  "Create PR for current HEAD",
 		Args:  cobra.MinimumNArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Println("🪄  pushing to remote...")
+			fmt.Println("🪄 pushing to remote...")
 			b, err := exec.Command("git", "push", "-u", "origin", "HEAD").CombinedOutput()
 			if err != nil {
 				fmt.Println("💥 failed to push HEAD to remote:", string(b))
@@ -58,6 +58,10 @@ func main() {
 				return
 			}
 
+			if cmd.Flag("open").Value.String() == "false" {
+				return
+			}
+
 			fmt.Println("🖥  opening pull request in browser...")
 			b, err = exec.Command("gh", "pr", "view", "--web").CombinedOutput()
 			if err != nil {
@@ -70,6 +74,7 @@ func main() {
 	}
 
 	prCmd.PersistentFlags().Bool("draft", false, "The PR will be created as draft")
+	prCmd.PersistentFlags().Bool("open", false, "The PR will be opened in the browser")
 
 	var rootCmd = &cobra.Command{Use: "wk"}
 	rootCmd.AddCommand(prCmd, todoCmd)

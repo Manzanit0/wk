@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	var todoCmd = &cobra.Command{
+	todoCmd := &cobra.Command{
 		Use:   "todo",
 		Short: "List pending pull requests",
 		Long:  "List pending pull requests",
@@ -33,7 +33,7 @@ func main() {
 		},
 	}
 
-	var prCmd = &cobra.Command{
+	prCmd := &cobra.Command{
 		Use:   "pr",
 		Short: "Create PR for current HEAD",
 		Long:  "Create PR for current HEAD",
@@ -46,10 +46,27 @@ func main() {
 				return
 			}
 
+			fmt.Println(" compiling commit messages...")
+			b, err = exec.Command("git", "log", "origin..HEAD", `--format="## %s%n%b"`).CombinedOutput()
+			if err != nil {
+				fmt.Println("💥 failed to compile commit messages:", string(b))
+				return
+			}
+
+			body := fmt.Sprintf("# Description\n\n%s", string(b))
+
+			// TODO: this is a quick-fix for getting the format right; I haven't
+			// bothered understanding why the `git log` puts quotes.
+			body = strings.ReplaceAll(body, `"`, "")
+
 			fmt.Println("🗞  creating pull request...")
-			command := []string{"pr", "create", "--fill", "--assignee", "Manzanit0"}
+			command := []string{"pr", "create", "--fill", "--assignee", "Manzanit0", "--body", body}
 			if isDraft := cmd.Flag("draft").Value.String(); isDraft == "true" {
 				command = append(command, "--draft")
+			}
+
+			if title := cmd.Flag("title").Value.String(); title != "" {
+				command = append(command, "--title", title)
 			}
 
 			b, err = exec.Command("gh", command...).CombinedOutput()
@@ -75,8 +92,9 @@ func main() {
 
 	prCmd.PersistentFlags().Bool("draft", false, "The PR will be created as draft")
 	prCmd.PersistentFlags().Bool("open", false, "The PR will be opened in the browser")
+	prCmd.PersistentFlags().String("title", "", "Title to give to the PR")
 
-	var rootCmd = &cobra.Command{Use: "wk"}
+	rootCmd := &cobra.Command{Use: "wk"}
 	rootCmd.AddCommand(prCmd, todoCmd)
 	if err := rootCmd.Execute(); err != nil {
 		log.Fatalf("command failed: %s", err.Error())
